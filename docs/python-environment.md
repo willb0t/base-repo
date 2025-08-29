@@ -4,11 +4,36 @@ This document provides comprehensive information about setting up and managing P
 
 ## Overview
 
-The repository includes a sophisticated Python environment management system that automatically detects your Linux distribution and sets up the appropriate Python environment with all necessary IaC tools. The system supports:
+The repository includes a sophisticated Python environment management system that automatically detects your Linux distribution and sets up the appropriate Python environment with all necessary IaC tools. The system supports **100+ Linux distributions and BSD systems** using a comprehensive detection database:
 
-- **Arch Linux** (using `pacman`)
-- **RHEL-based systems** (CentOS, RHEL, Rocky Linux, AlmaLinux, Fedora using `dnf`/`yum`)
-- **Debian-based systems** (Ubuntu, Debian, Linux Mint using `apt`)
+### **Supported Distribution Families:**
+
+- **BSD Family** (9 distributions): FreeBSD, OpenBSD, NetBSD, DragonFlyBSD, GhostBSD, TrueNAS, NomadBSD, MidnightBSD, HardenedBSD
+- **Arch Linux Family** (18+ distributions): Arch Linux, Manjaro, EndeavourOS, Garuda, CachyOS, ArcoLinux, Artix, RebornOS, Archcraft, ArchBang, Bluestar, SDesk, Ultimate, AxOS, Mabox, blendOS, and more
+- **RHEL/Red Hat Family** (10+ distributions): RHEL, CentOS, AlmaLinux, Rocky Linux, Oracle Linux, Scientific Linux, Fedora, Nobara, Ultramarine, Bazzite
+- **Debian Family** (40+ distributions): 
+  - Pure Debian: Debian, Devuan, antiX, MX Linux, SparkyLinux, Q4OS, Peppermint
+  - Ubuntu-based: Ubuntu (all flavors), Linux Mint, Pop!_OS, elementary OS, Zorin OS, KDE neon, Feren OS, Lite, Bodhi Linux, TUXEDO OS
+  - Security: Kali Linux, Parrot Security
+  - Other derivatives: deepin, PikaOS, Nitrux, MiniOS, Voyager, Endless, and more
+- **SUSE Family** (4 distributions): openSUSE (Leap, Tumbleweed), SLES
+- **Gentoo Family** (4 distributions): Gentoo Linux, Calculate Linux, Sabayon/Redcore Linux
+- **Slackware Family** (5 distributions): Slackware, Porteus, PorteuX, Zenwalk, Salix
+- **Independent Distributions** (15+ distributions): NixOS, Void Linux, Alpine Linux, Solus, PCLinuxOS, Mageia, 4MLinux, Tiny Core Linux, Clear Linux, KaOS, OpenMandriva, and more
+
+### **Package Manager Support:**
+- **apt** (Debian/Ubuntu family)
+- **pacman** (Arch family)
+- **dnf/yum** (RHEL/Fedora family)
+- **zypper** (SUSE family)
+- **pkg/ports** (BSD family)
+- **emerge** (Gentoo family)
+- **installpkg** (Slackware family)
+- **apk** (Alpine Linux)
+- **xbps** (Void Linux)
+- **eopkg** (Solus)
+- **nix** (NixOS)
+- And many more specialized package managers
 
 ## Quick Start
 

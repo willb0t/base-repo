@@ -21,7 +21,6 @@ google-auth>=2.25.2
 
 # VMware vSphere
 pyvmomi>=8.0.2.0.1
-vSphere-Automation-SDK>=1.81.0
 
 # Proxmox
 proxmoxer>=2.0.1

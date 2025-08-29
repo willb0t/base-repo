@@ -11,20 +11,48 @@ help: ## Show this help message
 # Environment Setup
 setup: ## Set up basic Python environment and install core dependencies
 	@echo "Setting up Python environment..."
+	@chmod +x scripts/setup-python-env-universal.sh
+	@./scripts/setup-python-env-universal.sh
+	@echo "Core requirements installed."
+
+setup-dev: ## Set up development environment with all dev tools
+	@echo "Setting up development environment..."
+	@chmod +x scripts/setup-python-env-universal.sh
+	@./scripts/setup-python-env-universal.sh --dev
+
+setup-tools: ## Set up environment with all IaC tools
+	@echo "Setting up IaC tools environment..."
+	@chmod +x scripts/setup-python-env-universal.sh
+	@./scripts/setup-python-env-universal.sh --tools
+
+setup-all: ## Set up base environment with core IaC dependencies (no dev tools)
+	@echo "Setting up base environment with core dependencies..."
+	@chmod +x scripts/setup-python-env-universal.sh
+	@./scripts/setup-python-env-universal.sh
+
+setup-legacy: ## Set up using legacy script (original 3-distro support)
+	@echo "Setting up Python environment using legacy script..."
 	@chmod +x scripts/setup-python-env.sh
 	@./scripts/setup-python-env.sh
 	@echo "Installing core requirements..."
 	@pip install -r requirements.txt
 
-setup-dev: setup ## Set up development environment with all dev tools
-	@echo "Installing development requirements..."
-	@pip install -r requirements-dev.txt
+setup-force: ## Force reinstall environment even if it exists
+	@echo "Force reinstalling Python environment..."
+	@chmod +x scripts/setup-python-env-universal.sh
+	@./scripts/setup-python-env-universal.sh --force --all
 
-setup-tools: setup ## Set up environment with all IaC tools
-	@echo "Installing IaC tools requirements..."
-	@pip install -r requirements-tools.txt
+setup-dev-full: ## Set up development environment with Jupyter/IPython (conflicts with terraform-compliance)
+	@echo "Setting up full development environment with modern IPython..."
+	@echo "WARNING: This excludes terraform-compliance due to IPython version conflicts"
+	@chmod +x scripts/setup-python-env-universal.sh
+	@./scripts/setup-python-env-universal.sh --dev-only
 
-setup-all: setup setup-dev setup-tools ## Set up complete environment with all dependencies
+setup-compliance: ## Set up environment with compliance tools (terraform-compliance + base requirements)
+	@echo "Setting up compliance environment with terraform-compliance..."
+	@echo "NOTE: This uses older IPython (7.16.1) for terraform-compliance compatibility"
+	@chmod +x scripts/setup-python-env-universal.sh
+	@./scripts/setup-python-env-universal.sh --compliance
 
 # Environment Management
 clean: ## Clean up Python cache files and temporary directories
@@ -187,6 +215,55 @@ update-deps: ## Update Python dependencies to latest versions
 	@pip-compile --upgrade requirements.in 2>/dev/null || echo "pip-tools not installed, skipping requirements.txt update"
 	@pip install --upgrade -r requirements.txt
 
+# Distribution Testing and Validation
+test-distro-detection: ## Test distribution detection without installing packages
+	@echo "Testing distribution detection..."
+	@chmod +x scripts/setup-python-env-universal.sh
+	@./scripts/setup-python-env-universal.sh --skip-system-deps --debug
+
+show-supported-distros: ## Show all supported distributions from database
+	@echo "=== Supported Linux Distributions and BSD Systems ==="
+	@echo ""
+	@echo "BSD Family:"
+	@grep "^[^#].*:bsd:" scripts/distro-database.conf | cut -d: -f1 | sort | sed 's/^/  - /'
+	@echo ""
+	@echo "Arch Linux Family:"
+	@grep "^[^#].*:arch:" scripts/distro-database.conf | cut -d: -f1 | sort | sed 's/^/  - /'
+	@echo ""
+	@echo "RHEL/Red Hat Family:"
+	@grep "^[^#].*:rhel:" scripts/distro-database.conf | cut -d: -f1 | sort | sed 's/^/  - /'
+	@echo ""
+	@echo "Debian Family:"
+	@grep "^[^#].*:debian:" scripts/distro-database.conf | cut -d: -f1 | sort | sed 's/^/  - /'
+	@echo ""
+	@echo "SUSE Family:"
+	@grep "^[^#].*:suse:" scripts/distro-database.conf | cut -d: -f1 | sort | sed 's/^/  - /'
+	@echo ""
+	@echo "Gentoo Family:"
+	@grep "^[^#].*:gentoo:" scripts/distro-database.conf | cut -d: -f1 | sort | sed 's/^/  - /'
+	@echo ""
+	@echo "Slackware Family:"
+	@grep "^[^#].*:slackware:" scripts/distro-database.conf | cut -d: -f1 | sort | sed 's/^/  - /'
+	@echo ""
+	@echo "Independent Distributions:"
+	@grep "^[^#].*:independent:" scripts/distro-database.conf | cut -d: -f1 | sort | sed 's/^/  - /'
+	@echo ""
+	@echo "Total supported distributions: $$(grep -c "^[^#].*:" scripts/distro-database.conf)"
+
+validate-database: ## Validate distribution database format
+	@echo "Validating distribution database..."
+	@awk -F: 'NF != 6 && !/^#/ && !/^$$/ { print "Invalid format on line " NR ": " $$0; exit 1 }' scripts/distro-database.conf
+	@echo "Database format validation passed!"
+
+show-distro-stats: ## Show distribution statistics by family
+	@echo "=== Distribution Statistics ==="
+	@echo ""
+	@echo "By Family:"
+	@grep "^[^#].*:" scripts/distro-database.conf | cut -d: -f2 | sort | uniq -c | sort -nr | awk '{printf "  %-12s: %d distributions\n", $$2, $$1}'
+	@echo ""
+	@echo "By Package Manager:"
+	@grep "^[^#].*:" scripts/distro-database.conf | cut -d: -f3 | sort | uniq -c | sort -nr | awk '{printf "  %-12s: %d distributions\n", $$2, $$1}'
+
 # Quick Start
 quickstart: ## Quick start guide for new users
 	@echo "=== Infrastructure-as-Code Repository Quick Start ==="
@@ -194,5 +271,9 @@ quickstart: ## Quick start guide for new users
 	@echo "2. Copy and customize terraform/environments/*.tfvars.example files"
 	@echo "3. Run 'make deploy-vsphere' or 'make deploy-proxmox' to deploy"
 	@echo "4. Use 'make help' to see all available commands"
+	@echo ""
+	@echo "Universal Distribution Support:"
+	@echo "  - Run 'make show-supported-distros' to see all supported systems"
+	@echo "  - Run 'make test-distro-detection' to test detection on your system"
 	@echo ""
 	@echo "For detailed instructions, see README.md"

@@ -37,15 +37,23 @@ chmod +x scripts/setup-python-env.sh
 ./scripts/setup-python-env.sh
 ```
 
-**Supported Distributions:**
-- **Arch Linux**: Uses `pacman` package manager
-- **RHEL-based**: CentOS, RHEL, Rocky Linux, AlmaLinux, Fedora (uses `dnf`/`yum`)
-- **Debian-based**: Ubuntu, Debian, Linux Mint (uses `apt`)
+**Supported Systems:**
+- **100+ Linux Distributions**: Comprehensive support from DistroWatch database
+- **BSD Systems**: FreeBSD, OpenBSD, NetBSD, DragonFlyBSD, and derivatives
+- **All Major Families**: Arch, Debian/Ubuntu, RHEL/Fedora, SUSE, Gentoo, Slackware, and Independent distributions
 
-The setup script will:
-1. Detect your Linux distribution automatically
-2. Install system dependencies (Python, build tools, etc.)
-3. Create a Python virtual environment with latest Python version
+**Distribution Families Supported:**
+- **BSD Family** (9 systems): FreeBSD, OpenBSD, NetBSD, DragonFlyBSD, GhostBSD, TrueNAS, etc.
+- **Arch Linux Family** (18+ distributions): Arch, Manjaro, EndeavourOS, Garuda, CachyOS, ArcoLinux, Artix, etc.
+- **RHEL/Red Hat Family** (10+ distributions): RHEL, CentOS, AlmaLinux, Rocky, Fedora, Nobara, etc.
+- **Debian Family** (40+ distributions): Debian, Ubuntu (all flavors), Mint, Pop!_OS, Kali, Parrot, etc.
+- **SUSE Family**: openSUSE (Leap, Tumbleweed), SLES
+- **Independent**: NixOS, Void Linux, Alpine Linux, Solus, and many more
+
+The universal setup script will:
+1. Detect your Linux distribution or BSD system automatically using comprehensive database
+2. Install appropriate system dependencies using the correct package manager
+3. Create a Python virtual environment with the latest available Python version
 4. Install all IaC tools (Terraform utilities, Ansible, cloud SDKs)
 5. Set up development tools (linting, testing, security scanning)
 
