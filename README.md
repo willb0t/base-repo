@@ -69,7 +69,7 @@ The universal setup script will:
 1. Clone this repository:
    ```bash
    git clone <repository-url>
-   cd gitlab-iac-terraform
+   cd base-repo
    ```
 
 2. Set up secure credential storage:
