@@ -1,0 +1,42 @@
+# Platform Selection
+platform = "vsphere"
+
+# VM Configuration
+vm_name      = "gitlab-ce"
+vm_cpu       = 4
+vm_memory    = 8192
+vm_disk_size = 50
+vm_network   = "VM Network"
+vm_domain    = "local"
+
+# VMware vSphere Configuration
+vsphere_server     = "vcenter.example.com"
+vsphere_user       = "administrator@vsphere.local"
+vsphere_password   = "your-vcenter-password"
+vsphere_datacenter = "Datacenter"
+vsphere_cluster    = "Cluster"
+vsphere_datastore  = "datastore1"
+vsphere_template   = "ubuntu-22.04-template"
+
+# Network Configuration
+use_static_ip = false
+static_ip     = ""
+gateway       = ""
+dns_servers   = ["8.8.8.8", "8.8.4.4"]
+
+# SSH Configuration
+ssh_public_key        = ""  # Leave empty to generate new SSH key pair
+ssh_private_key_file  = "~/.ssh/id_rsa"
+ssh_username          = "ubuntu"
+
+# GitLab Configuration
+gitlab_external_url = "http://gitlab.example.com"
+
+# LDAP Configuration (Optional)
+enable_ldap    = false
+ldap_host      = "ldap.example.com"
+ldap_port      = 389
+ldap_bind_dn   = "cn=admin,dc=example,dc=com"
+ldap_password  = "ldap-password"
+ldap_base      = "dc=example,dc=com"
+ldap_user_filter = ""

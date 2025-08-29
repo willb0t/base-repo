@@ -1,0 +1,139 @@
+---
+- name: Configure GitLab LDAP integration
+  blockinfile:
+    path: /etc/gitlab/gitlab.rb
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - LDAP Configuration"
+    block: |
+      # LDAP Configuration
+      gitlab_rails['ldap_enabled'] = true
+      gitlab_rails['prevent_ldap_sign_in'] = false
+      
+      gitlab_rails['ldap_servers'] = YAML.load <<-'EOS'
+        main: # 'main' is the GitLab 'provider ID' of this LDAP server
+          label: 'LDAP'
+          host: '{{ ldap_host | default("ldap.example.com") }}'
+          port: {{ ldap_port | default(389) }}
+          uid: '{{ ldap_uid_attribute | default("uid") }}'
+          bind_dn: '{{ ldap_bind_dn | default("") }}'
+          password: '{{ ldap_password | default("") }}'
+          encryption: '{{ ldap_encryption | default("plain") }}' # "start_tls" or "simple_tls" or "plain"
+          verify_certificates: {{ ldap_verify_certificates | default(true) | lower }}
+          smartcard_auth: false
+          active_directory: {{ ldap_active_directory | default(false) | lower }}
+          allow_username_or_email_login: {{ ldap_allow_username_or_email_login | default(false) | lower }}
+          lowercase_usernames: {{ ldap_lowercase_usernames | default(false) | lower }}
+          block_auto_created_users: {{ ldap_block_auto_created_users | default(false) | lower }}
+          base: '{{ ldap_base | default("dc=example,dc=com") }}'
+          user_filter: '{{ ldap_user_filter | default("") }}'
+          ## EE only
+          group_base: '{{ ldap_group_base | default("") }}'
+          admin_group: '{{ ldap_admin_group | default("") }}'
+          external_groups: {{ ldap_external_groups | default([]) | to_json }}
+          sync_ssh_keys: {{ ldap_sync_ssh_keys | default(false) | lower }}
+          
+          # User attribute mapping
+          attributes:
+            username: ['{{ ldap_username_attribute | default("uid") }}']
+            email: ['{{ ldap_email_attribute | default("mail") }}']
+            name: '{{ ldap_name_attribute | default("cn") }}'
+            first_name: '{{ ldap_first_name_attribute | default("givenName") }}'
+            last_name: '{{ ldap_last_name_attribute | default("sn") }}'
+      EOS
+    backup: true
+  notify: reconfigure gitlab
+  when: enable_ldap | default(false) | bool
+
+- name: Configure LDAP connection timeout
+  lineinfile:
+    path: /etc/gitlab/gitlab.rb
+    regexp: "^gitlab_rails\\['ldap_timeout'\\]"
+    line: "gitlab_rails['ldap_timeout'] = {{ ldap_timeout | default(10) }}"
+    backup: true
+  notify: reconfigure gitlab
+  when: enable_ldap | default(false) | bool
+
+- name: Configure LDAP sign-in settings
+  blockinfile:
+    path: /etc/gitlab/gitlab.rb
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - LDAP Sign-in Settings"
+    block: |
+      # LDAP Sign-in Settings
+      gitlab_rails['omniauth_enabled'] = true
+      gitlab_rails['omniauth_allow_single_sign_on'] = ['ldapmain']
+      gitlab_rails['omniauth_sync_email_from_provider'] = 'ldapmain'
+      gitlab_rails['omniauth_sync_profile_from_provider'] = ['ldapmain']
+      gitlab_rails['omniauth_sync_profile_attributes'] = ['email']
+      gitlab_rails['omniauth_auto_sign_in_with_provider'] = '{{ ldap_auto_sign_in | default("") }}'
+      gitlab_rails['omniauth_block_auto_created_users'] = {{ ldap_block_auto_created_users | default(false) | lower }}
+      gitlab_rails['omniauth_auto_link_ldap_user'] = {{ ldap_auto_link_user | default(false) | lower }}
+      gitlab_rails['omniauth_auto_link_saml_user'] = false
+      gitlab_rails['omniauth_external_providers'] = ['ldapmain']
+    backup: true
+  notify: reconfigure gitlab
+  when: enable_ldap | default(false) | bool
+
+- name: Test LDAP connection
+  command: gitlab-rake gitlab:ldap:check
+  register: ldap_check_result
+  changed_when: false
+  failed_when: false
+  when: enable_ldap | default(false) | bool
+
+- name: Display LDAP connection test results
+  debug:
+    var: ldap_check_result.stdout_lines
+  when: 
+    - enable_ldap | default(false) | bool
+    - ldap_check_result is defined
+
+- name: Create LDAP troubleshooting script
+  copy:
+    content: |
+      #!/bin/bash
+      # GitLab LDAP Troubleshooting Script
+      
+      echo "=== GitLab LDAP Configuration Check ==="
+      echo "1. Testing LDAP connection..."
+      gitlab-rake gitlab:ldap:check
+      
+      echo ""
+      echo "2. Checking LDAP users..."
+      gitlab-rake gitlab:ldap:check_users
+      
+      echo ""
+      echo "3. GitLab LDAP configuration:"
+      grep -A 50 "ldap_enabled.*true" /etc/gitlab/gitlab.rb
+      
+      echo ""
+      echo "4. GitLab logs (last 50 lines):"
+      tail -50 /var/log/gitlab/gitlab-rails/production.log | grep -i ldap
+      
+      echo ""
+      echo "=== LDAP Troubleshooting Complete ==="
+    dest: /usr/local/bin/gitlab-ldap-debug
+    mode: '0755'
+    owner: root
+    group: root
+  when: enable_ldap | default(false) | bool
+
+- name: Display LDAP configuration summary
+  debug:
+    msg:
+      - "LDAP integration has been configured for GitLab"
+      - "LDAP Server: {{ ldap_host | default('ldap.example.com') }}:{{ ldap_port | default(389) }}"
+      - "Base DN: {{ ldap_base | default('dc=example,dc=com') }}"
+      - "Bind DN: {{ ldap_bind_dn | default('Not configured') }}"
+      - ""
+      - "To test LDAP connection, run:"
+      - "  sudo gitlab-rake gitlab:ldap:check"
+      - ""
+      - "To troubleshoot LDAP issues, run:"
+      - "  sudo /usr/local/bin/gitlab-ldap-debug"
+      - ""
+      - "Users can now sign in using their LDAP credentials"
+  when: enable_ldap | default(false) | bool
+
+- name: Skip LDAP configuration
+  debug:
+    msg: "LDAP integration is disabled. Skipping LDAP configuration."
+  when: not (enable_ldap | default(false) | bool)

@@ -1,0 +1,186 @@
+---
+- name: Add GitLab repository key
+  apt_key:
+    url: https://packages.gitlab.com/gitlab/gitlab-ce/gpgkey
+    state: present
+
+- name: Add GitLab repository
+  apt_repository:
+    repo: "deb https://packages.gitlab.com/gitlab/gitlab-ce/ubuntu/ {{ ansible_distribution_release }} main"
+    state: present
+    update_cache: true
+
+- name: Install GitLab CE
+  apt:
+    name: gitlab-ce
+    state: present
+    update_cache: true
+  register: gitlab_install_result
+
+- name: Configure GitLab external URL
+  lineinfile:
+    path: /etc/gitlab/gitlab.rb
+    regexp: "^external_url"
+    line: "external_url '{{ gitlab_external_url }}'"
+    backup: true
+  notify: reconfigure gitlab
+
+- name: Configure GitLab basic settings
+  blockinfile:
+    path: /etc/gitlab/gitlab.rb
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Basic Configuration"
+    block: |
+      # Basic GitLab configuration
+      gitlab_rails['time_zone'] = 'UTC'
+      gitlab_rails['backup_keep_time'] = 604800
+      gitlab_rails['gitlab_email_enabled'] = true
+      gitlab_rails['gitlab_email_from'] = 'gitlab@{{ ansible_fqdn }}'
+      gitlab_rails['gitlab_email_display_name'] = 'GitLab'
+      
+      # Security settings
+      gitlab_rails['webhook_timeout'] = 10
+      gitlab_rails['git_timeout'] = 800
+      
+      # Performance settings
+      unicorn['worker_processes'] = {{ (ansible_processor_vcpus | int / 2) | round | int }}
+      postgresql['shared_buffers'] = "{{ (ansible_memtotal_mb * 0.25) | round | int }}MB"
+      
+      # Disable unused services to save resources
+      prometheus_monitoring['enable'] = false
+      alertmanager['enable'] = false
+      node_exporter['enable'] = false
+      redis_exporter['enable'] = false
+      postgres_exporter['enable'] = false
+      gitlab_exporter['enable'] = false
+      grafana['enable'] = false
+    backup: true
+  notify: reconfigure gitlab
+
+- name: Configure GitLab SSL settings (if HTTPS)
+  blockinfile:
+    path: /etc/gitlab/gitlab.rb
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - SSL Configuration"
+    block: |
+      # SSL Configuration
+      nginx['redirect_http_to_https'] = true
+      nginx['ssl_certificate'] = "/etc/gitlab/ssl/{{ ansible_fqdn }}.crt"
+      nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/{{ ansible_fqdn }}.key"
+      nginx['ssl_ciphers'] = "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"
+      nginx['ssl_prefer_server_ciphers'] = "on"
+      nginx['ssl_protocols'] = "TLSv1.2 TLSv1.3"
+      nginx['ssl_session_cache'] = "builtin:1000 shared:SSL:10m"
+      nginx['ssl_session_timeout'] = "5m"
+    backup: true
+  when: gitlab_external_url.startswith('https://')
+  notify: reconfigure gitlab
+
+- name: Create SSL directory
+  file:
+    path: /etc/gitlab/ssl
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  when: gitlab_external_url.startswith('https://')
+
+- name: Generate self-signed SSL certificate
+  command: >
+    openssl req -new -nodes -x509 -subj "/C=US/ST=CA/L=San Francisco/O=IT/CN={{ ansible_fqdn }}" 
+    -days 3650 -keyout /etc/gitlab/ssl/{{ ansible_fqdn }}.key -out /etc/gitlab/ssl/{{ ansible_fqdn }}.crt 
+    -extensions v3_ca
+  args:
+    creates: /etc/gitlab/ssl/{{ ansible_fqdn }}.crt
+  when: gitlab_external_url.startswith('https://')
+  notify: reconfigure gitlab
+
+- name: Set SSL certificate permissions
+  file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: '0600'
+  loop:
+    - "/etc/gitlab/ssl/{{ ansible_fqdn }}.key"
+    - "/etc/gitlab/ssl/{{ ansible_fqdn }}.crt"
+  when: gitlab_external_url.startswith('https://')
+
+- name: Configure GitLab backup settings
+  blockinfile:
+    path: /etc/gitlab/gitlab.rb
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Backup Configuration"
+    block: |
+      # Backup configuration
+      gitlab_rails['manage_backup_path'] = true
+      gitlab_rails['backup_path'] = "/var/opt/gitlab/backups"
+      gitlab_rails['backup_archive_permissions'] = 0644
+      gitlab_rails['backup_pg_schema'] = 'public'
+      gitlab_rails['backup_keep_time'] = 604800
+      
+      # Backup schedule (daily at 2 AM)
+      gitlab_rails['backup_upload_connection'] = {
+        'provider' => 'Local'
+      }
+    backup: true
+  notify: reconfigure gitlab
+
+- name: Run GitLab reconfigure if this is a fresh installation
+  command: gitlab-ctl reconfigure
+  when: gitlab_install_result.changed
+  register: gitlab_reconfigure_result
+
+- name: Wait for GitLab to be ready
+  uri:
+    url: "{{ gitlab_external_url }}"
+    method: GET
+    status_code: [200, 302]
+  register: gitlab_health_check
+  until: gitlab_health_check.status in [200, 302]
+  retries: 30
+  delay: 10
+  when: gitlab_reconfigure_result.changed or gitlab_install_result.changed
+
+- name: Create GitLab backup cron job
+  cron:
+    name: "GitLab backup"
+    minute: "0"
+    hour: "2"
+    job: "/opt/gitlab/bin/gitlab-backup create CRON=1"
+    user: root
+
+- name: Create GitLab backup cleanup cron job
+  cron:
+    name: "GitLab backup cleanup"
+    minute: "30"
+    hour: "2"
+    job: "find /var/opt/gitlab/backups -name '*.tar' -mtime +7 -delete"
+    user: root
+
+- name: Display GitLab status
+  command: gitlab-ctl status
+  register: gitlab_status
+  changed_when: false
+
+- name: Show GitLab status
+  debug:
+    var: gitlab_status.stdout_lines
+
+- name: Check if initial root password file exists
+  stat:
+    path: /etc/gitlab/initial_root_password
+  register: initial_password_file
+
+- name: Display initial root password location
+  debug:
+    msg: 
+      - "GitLab CE installation completed successfully!"
+      - "Access GitLab at: {{ gitlab_external_url }}"
+      - "Initial root password is stored in: /etc/gitlab/initial_root_password"
+      - "Use 'sudo cat /etc/gitlab/initial_root_password' to view the password"
+      - "Remember to change the root password after first login!"
+  when: initial_password_file.stat.exists
+
+- name: Ensure GitLab services are running
+  service:
+    name: gitlab-runsvdir
+    state: started
+    enabled: true

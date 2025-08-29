@@ -1,0 +1,63 @@
+---
+- name: Install and Configure GitLab CE
+  hosts: gitlab_servers
+  become: true
+  gather_facts: true
+  vars:
+    gitlab_external_url: "{{ gitlab_external_url | default('http://' + ansible_default_ipv4.address) }}"
+    gitlab_initial_root_password: "{{ gitlab_root_password | default('') }}"
+    enable_ldap: "{{ enable_ldap | default(false) }}"
+    
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Wait for system to be ready
+      wait_for_connection:
+        timeout: 300
+
+  roles:
+    - common
+    - gitlab-ce
+    - role: ldap-integration
+      when: enable_ldap | bool
+
+  post_tasks:
+    - name: Display GitLab access information
+      debug:
+        msg:
+          - "GitLab installation completed successfully!"
+          - "Access GitLab at: {{ gitlab_external_url }}"
+          - "Initial root password is stored in: /etc/gitlab/initial_root_password"
+          - "SSH to server: ssh {{ ansible_user }}@{{ ansible_host }}"
+          - ""
+          - "Next steps:"
+          - "1. Access GitLab web interface"
+          - "2. Login as root with the initial password"
+          - "3. Change the root password"
+          - "4. Configure additional settings as needed"
+
+    - name: Save connection information to local file
+      local_action:
+        module: copy
+        content: |
+          GitLab Server Information
+          ========================
+          
+          Server IP: {{ ansible_host }}
+          GitLab URL: {{ gitlab_external_url }}
+          SSH Command: ssh {{ ansible_user }}@{{ ansible_host }}
+          
+          Initial Setup:
+          1. Access GitLab at: {{ gitlab_external_url }}
+          2. Login as 'root'
+          3. Get initial password: sudo cat /etc/gitlab/initial_root_password
+          4. Change root password after first login
+          
+          LDAP Integration: {{ 'Enabled' if enable_ldap else 'Disabled' }}
+          
+          Generated on: {{ ansible_date_time.iso8601 }}
+        dest: "./gitlab-connection-info.txt"
+      run_once: true

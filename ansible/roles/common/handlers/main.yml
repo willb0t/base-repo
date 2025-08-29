@@ -1,0 +1,17 @@
+---
+- name: restart ssh
+  service:
+    name: ssh
+    state: restarted
+
+- name: enable ufw
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted
+    enabled: true

@@ -1,0 +1,16 @@
+---
+- name: reconfigure gitlab
+  command: gitlab-ctl reconfigure
+  register: gitlab_reconfigure_output
+  changed_when: true
+  notify: restart gitlab
+
+- name: restart gitlab
+  command: gitlab-ctl restart
+  register: gitlab_restart_output
+  changed_when: true
+
+- name: reload gitlab
+  command: gitlab-ctl hup
+  register: gitlab_reload_output
+  changed_when: true
