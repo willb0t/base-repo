@@ -1,0 +1,95 @@
+# Include base requirements
+-r requirements.txt
+
+# Terraform Tools and Utilities
+terraform-docs>=0.16.0
+tflint>=0.48.0
+terragrunt>=0.53.0
+terraform-inventory>=0.10
+terraform-external-data>=0.2.0
+
+# Ansible Galaxy Collections and Tools
+ansible-runner>=2.3.4
+ansible-navigator>=3.5.1
+ansible-builder>=3.0.1
+ara[server]>=1.6.1
+
+# Cloud-Init and VM Customization
+cloud-init>=23.4.0
+pycloudlib>=5.2.0
+
+# Infrastructure Testing
+testinfra>=10.1.0
+pytest-testinfra>=10.1.0
+inspec>=5.22.3
+
+# Security Scanning and Compliance
+terrascan>=1.18.11
+tfsec>=1.28.4
+kics>=1.7.13
+semgrep>=1.50.0
+
+# Kubernetes and Container Tools (for future expansion)
+kubernetes>=28.1.0
+helm>=3.13.2
+docker>=6.1.3
+
+# Monitoring and Observability
+prometheus-client>=0.19.0
+grafana-api>=1.0.3
+
+# Backup and Disaster Recovery
+duplicity>=2.2.3
+restic>=0.16.2
+
+# Network Automation
+napalm>=4.1.0
+netmiko>=4.3.0
+nornir>=3.4.1
+
+# Database Management
+psycopg2-binary>=2.9.9
+pymongo>=4.6.0
+redis>=5.0.1
+
+# Message Queues and Event Streaming
+celery>=5.3.4
+kombu>=5.3.4
+pika>=1.3.2
+
+# API Development and Integration
+fastapi>=0.104.1
+uvicorn>=0.24.0
+pydantic>=2.5.0
+
+# File and Archive Handling
+py7zr>=0.20.8
+rarfile>=4.1
+zipfile38>=0.0.3
+
+# System Information and Hardware
+psutil>=5.9.6
+py-cpuinfo>=9.0.0
+distro>=1.8.0
+
+# Encryption and Key Management
+hvac>=2.1.0  # HashiCorp Vault client
+keyring>=24.3.0
+cryptography>=41.0.8
+
+# Git and Version Control
+gitpython>=3.1.40
+dulwich>=0.21.7
+
+# Template Engines
+cookiecutter>=2.5.0
+copier>=9.1.0
+
+# Performance and Optimization
+cachetools>=5.3.2
+joblib>=1.3.2
+
+# Workflow and Pipeline Tools
+prefect>=2.14.21
+airflow>=2.8.0
+luigi>=3.5.0

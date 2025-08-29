@@ -16,13 +16,47 @@ This repository provides a complete Infrastructure-as-Code (IaC) solution for pr
 
 ### Prerequisites
 
-1. **Terraform** >= 1.0
-2. **Ansible** >= 2.9
+#### System Requirements
+
+1. **Operating System**: Linux (Arch Linux, RHEL-based, or Debian-based)
+2. **Python**: 3.9+ (automatically detected and installed)
 3. **Platform Access**:
    - For vSphere: vCenter credentials and Ubuntu 22.04+ template
    - For Proxmox: Proxmox VE credentials and Ubuntu 22.04+ cloud image
 
-### Basic Usage
+#### Automated Environment Setup
+
+The repository includes an intelligent setup system that automatically detects your Linux distribution and installs all required tools:
+
+```bash
+# Quick setup (recommended)
+make dev-setup
+
+# Or step-by-step setup
+chmod +x scripts/setup-python-env.sh
+./scripts/setup-python-env.sh
+```
+
+**Supported Distributions:**
+- **Arch Linux**: Uses `pacman` package manager
+- **RHEL-based**: CentOS, RHEL, Rocky Linux, AlmaLinux, Fedora (uses `dnf`/`yum`)
+- **Debian-based**: Ubuntu, Debian, Linux Mint (uses `apt`)
+
+The setup script will:
+1. Detect your Linux distribution automatically
+2. Install system dependencies (Python, build tools, etc.)
+3. Create a Python virtual environment with latest Python version
+4. Install all IaC tools (Terraform utilities, Ansible, cloud SDKs)
+5. Set up development tools (linting, testing, security scanning)
+
+#### Manual Prerequisites (if not using automated setup)
+
+1. **Terraform** >= 1.0
+2. **Ansible** >= 2.9
+3. **Python** >= 3.9 with pip and venv
+4. **Git** for version control
+
+### Secure Setup (Recommended)
 
 1. Clone this repository:
    ```bash
@@ -30,13 +64,13 @@ This repository provides a complete Infrastructure-as-Code (IaC) solution for pr
    cd gitlab-iac-terraform
    ```
 
-2. Copy and customize environment variables:
+2. Set up secure credential storage:
    ```bash
-   # For VMware vSphere
-   cp terraform/environments/vsphere.tfvars.example terraform/environments/vsphere.tfvars
+   # Create encrypted vault for credentials
+   ./scripts/manage-vault.sh create
    
-   # For Proxmox
-   cp terraform/environments/proxmox.tfvars.example terraform/environments/proxmox.tfvars
+   # Edit vault with your actual credentials
+   ./scripts/manage-vault.sh edit
    ```
 
 3. Initialize Terraform:
@@ -46,17 +80,39 @@ This repository provides a complete Infrastructure-as-Code (IaC) solution for pr
 
 4. Deploy to your chosen platform:
    ```bash
+   # Load credentials and deploy to vSphere
+   source <(./scripts/load-vault-env.sh load vsphere)
+   terraform apply -var="platform=vsphere"
+   
+   # Or load credentials and deploy to Proxmox
+   source <(./scripts/load-vault-env.sh load proxmox)
+   terraform apply -var="platform=proxmox"
+   ```
+
+5. Configure GitLab with Ansible:
+   ```bash
+   # Run the GitLab installation playbook (vault automatically used)
+   ansible-playbook -i ansible/inventories/hosts ansible/playbooks/gitlab-setup.yml
+   ```
+
+### Alternative: Plain Text Setup (Not Recommended for Production)
+
+1. Copy and customize environment variables:
+   ```bash
+   # For VMware vSphere
+   cp terraform/environments/vsphere.tfvars.example terraform/environments/vsphere.tfvars
+   
+   # For Proxmox
+   cp terraform/environments/proxmox.tfvars.example terraform/environments/proxmox.tfvars
+   ```
+
+2. Deploy with variable files:
+   ```bash
    # Deploy to VMware vSphere
    terraform apply -var="platform=vsphere" -var-file="terraform/environments/vsphere.tfvars"
    
    # Deploy to Proxmox
    terraform apply -var="platform=proxmox" -var-file="terraform/environments/proxmox.tfvars"
-   ```
-
-5. Configure GitLab with Ansible:
-   ```bash
-   # Run the GitLab installation playbook
-   ansible-playbook -i ansible/inventories/hosts ansible/playbooks/gitlab-setup.yml
    ```
 
 ## Repository Structure
@@ -67,20 +123,27 @@ gitlab-iac-terraform/
 ├── main.tf                            # Main Terraform configuration
 ├── variables.tf                       # Global variables
 ├── outputs.tf                         # Terraform outputs
+├── .gitignore                         # Git ignore rules (includes vault security)
 ├── terraform/
 │   ├── modules/
 │   │   ├── vsphere/                   # VMware vSphere module
 │   │   │   ├── main.tf
 │   │   │   ├── variables.tf
-│   │   │   └── outputs.tf
+│   │   │   ├── outputs.tf
+│   │   │   ├── cloud-init-user-data.yml
+│   │   │   └── cloud-init-meta-data.yml
 │   │   └── proxmox/                   # Proxmox module
 │   │       ├── main.tf
 │   │       ├── variables.tf
-│   │       └── outputs.tf
+│   │       ├── outputs.tf
+│   │       └── cloud-init-user-data.yml
 │   └── environments/
 │       ├── vsphere.tfvars.example     # vSphere configuration example
 │       └── proxmox.tfvars.example     # Proxmox configuration example
 ├── ansible/
+│   ├── group_vars/
+│   │   └── all/
+│   │       └── vault.yml              # Encrypted credentials (created by script)
 │   ├── playbooks/
 │   │   ├── gitlab-setup.yml           # Main GitLab setup playbook
 │   │   └── ldap-integration.yml       # Optional LDAP integration
@@ -89,22 +152,82 @@ gitlab-iac-terraform/
 │   │   ├── gitlab-ce/                 # GitLab CE installation
 │   │   └── ldap-integration/          # LDAP configuration
 │   ├── inventories/
-│   │   └── hosts                      # Dynamic inventory template
+│   │   └── hosts.tpl                  # Dynamic inventory template
 │   └── ansible.cfg                    # Ansible configuration
 ├── docs/
 │   ├── vsphere-setup.md              # vSphere-specific setup guide
 │   ├── proxmox-setup.md              # Proxmox-specific setup guide
+│   ├── secure-credentials.md         # Secure credential management guide
 │   ├── template-creation.md          # Cloud-init template creation
 │   └── troubleshooting.md            # Common issues and solutions
 └── scripts/
     ├── generate-ssh-keys.sh          # SSH key generation utility
+    ├── manage-vault.sh               # Ansible Vault management script
+    ├── load-vault-env.sh             # Environment variable loader
     └── setup-environment.sh          # Environment setup script
 ```
 
+## Development Environment
+
+### Python Environment Management
+
+This repository includes a sophisticated Python environment management system with multi-distribution support. For detailed information, see the [Python Environment Setup Guide](docs/python-environment.md).
+
+#### Quick Environment Setup Options
+
+```bash
+# Complete development setup (recommended for contributors)
+make dev-setup
+
+# Basic setup with core IaC tools only
+make setup
+
+# Setup with development tools
+make setup-dev
+
+# Setup with specialized IaC tools
+make setup-tools
+
+# Setup everything (core + dev + tools)
+make setup-all
+```
+
+#### Environment Management Commands
+
+```bash
+# View all available commands
+make help
+
+# Check current environment status
+make status
+
+# Run code quality checks
+make lint
+
+# Run security scans
+make security
+
+# Clean up temporary files
+make clean
+
+# Validate Terraform configuration
+make validate
+```
+
+#### Requirements Files
+
+The repository includes multiple requirements files for different use cases:
+
+- **`requirements.txt`**: Core IaC tools (Ansible, cloud SDKs, Terraform utilities)
+- **`requirements-dev.txt`**: Development tools (testing, linting, documentation)
+- **`requirements-tools.txt`**: Specialized IaC tools (security scanning, infrastructure testing)
+
 ## Platform-Specific Documentation
 
+- [Python Environment Setup Guide](docs/python-environment.md)
 - [VMware vSphere Setup Guide](docs/vsphere-setup.md)
 - [Proxmox Setup Guide](docs/proxmox-setup.md)
+- [Secure Credential Management](docs/secure-credentials.md)
 - [Cloud-Init Template Creation](docs/template-creation.md)
 
 ## Configuration
